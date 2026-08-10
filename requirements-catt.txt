@@ -1,0 +1,15 @@
+# The original repository's own requirements.txt is a full `pip freeze` from a 2023
+# machine. It pins numpy~=1.24.2 and torch~=2.0.0, neither of which publishes
+# for Python 3.12+, so pip tries to compile them from source and
+# the install fails. CATT never imports torch at all.
+#
+# This file lists only what CATT actually imports:
+
+pandas>=2.2,<3      # pandas 3.x changes behaviour CATT has not been updated for
+numpy>=1.26
+scikit-learn>=1.4
+PyYAML>=6.0
+requests>=2.31
+dateparser>=1.2
+genshi>=0.7.7
+pytz>=2024.1

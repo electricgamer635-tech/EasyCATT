@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CATT command builder</title>
+<style>
+:root{
+  --paper:#F1F3F1; --card:#FFFFFF; --ink:#151A18; --ink2:#5A625E; --ink3:#8A918D;
+  --line:rgba(21,26,24,.12); --line2:rgba(21,26,24,.24);
+  --accent:#0F6E56; --accent-bg:#E1F5EE; --accent-line:#5DCAA5;
+  --warn:#854F0B; --warn-bg:#FAEEDA;
+  --slab:#151A18; --slab-ink:#E9EDEA; --slab-flag:#5DCAA5; --slab-val:#EF9F27; --slab-dim:#7A837E;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --paper:#101413; --card:#191E1C; --ink:#E9EDEA; --ink2:#A5AEA9; --ink3:#79827D;
+    --line:rgba(255,255,255,.13); --line2:rgba(255,255,255,.26);
+    --accent:#5DCAA5; --accent-bg:#0E3A2E; --accent-line:#1D9E75;
+    --warn:#EF9F27; --warn-bg:#3A2A09;
+    --slab:#05100C;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6}
+.wrap{max-width:880px;margin:0 auto;padding:40px 20px 24px}
+header{margin-bottom:28px}
+h1{font-size:26px;font-weight:500;letter-spacing:-.02em;margin:0 0 6px}
+.lede{color:var(--ink2);margin:0;max-width:58ch}
+.mode{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-family:var(--mono);color:var(--ink3);border:1px solid var(--line);border-radius:20px;padding:3px 11px;margin-top:12px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ink3)}
+.mode.live .dot{background:var(--accent)}
+.mode.live{color:var(--accent);border-color:var(--accent-line)}
+section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:14px}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;color:var(--ink3);margin:0 0 2px}
+h2{font-size:16px;font-weight:500;margin:0 0 4px}
+.note{font-size:13px;color:var(--ink3);margin:0 0 14px;max-width:62ch}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-family:var(--mono);font-size:12.5px;padding:6px 10px;border:1px solid var(--line2);border-radius:6px;background:transparent;color:var(--ink2);cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.chip:hover{border-color:var(--accent-line);color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--accent-bg);border-color:var(--accent-line);color:var(--accent)}
+.ord{font-size:10.5px;min-width:15px;height:15px;border-radius:3px;background:var(--accent);color:var(--card);display:none;align-items:center;justify-content:center;line-height:1}
+.chip[aria-pressed="true"] .ord{display:inline-flex}
+.chip .miss{display:none;width:6px;height:6px;border-radius:50%;background:var(--warn)}
+.chip[data-missing="1"] .miss{display:inline-block}
+.preset{font-family:var(--sans);font-size:13px;padding:7px 12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px 22px;align-items:start}
+.lab{display:block;font-size:13px;color:var(--ink2);margin-bottom:5px}
+input[type=text],select,textarea{width:100%;font-family:var(--mono);font-size:13px;padding:8px 10px;border:1px solid var(--line2);border-radius:6px;background:var(--card);color:var(--ink)}
+textarea{min-height:90px;resize:vertical;line-height:1.5}
+input[type=text]::placeholder,textarea::placeholder{color:var(--ink3)}
+input[type=text]:hover,select:hover,textarea:hover{border-color:var(--accent-line)}
+.opt{display:flex;gap:10px;align-items:flex-start}
+.opt input[type=checkbox]{margin:4px 0 0;accent-color:var(--accent);width:15px;height:15px;flex:none}
+.flag{font-family:var(--mono);font-size:13px}
+.gloss{display:block;font-size:12.5px;color:var(--ink3);line-height:1.45}
+details{margin-top:5px}
+summary{font-size:12.5px;color:var(--accent);cursor:pointer;list-style:none;display:inline-block}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"+ ";font-family:var(--mono)}
+details[open] summary::before{content:"\2013 "}
+details p{font-size:13px;color:var(--ink2);background:var(--paper);border-left:2px solid var(--accent-line);padding:9px 12px;margin:7px 0 0;max-width:58ch}
+.warn{font-size:13px;color:var(--warn);background:var(--warn-bg);border-radius:6px;padding:8px 11px;margin:0 0 6px}
+.bar{position:sticky;bottom:0;background:var(--slab);border-radius:10px;padding:16px 18px;margin-top:22px}
+.barhead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:9px}
+.barhead span{font-family:var(--mono);font-size:11.5px;color:var(--slab-dim);letter-spacing:.04em}
+#cmd{font-family:var(--mono);font-size:13px;line-height:1.75;color:var(--slab-ink);white-space:pre-wrap;word-break:break-word;margin:0}
+#cmd .f{color:var(--slab-flag)}
+#cmd .v{color:var(--slab-val)}
+button{font-family:var(--sans);font-size:13px;padding:6px 12px;border:1px solid var(--line2);border-radius:6px;background:transparent;color:var(--ink2);cursor:pointer}
+button:hover{border-color:var(--accent-line);color:var(--ink)}
+.bar button{border-color:rgba(255,255,255,.28);color:var(--slab-ink)}
+.bar button:hover{border-color:var(--slab-flag);color:var(--slab-flag)}
+.bar button.go{background:var(--slab-flag);border-color:var(--slab-flag);color:#05100C;font-weight:500}
+.bar button.go:hover{filter:brightness(1.08)}
+button[disabled]{opacity:.45;cursor:default}
+#log{font-family:var(--mono);font-size:12px;line-height:1.6;background:var(--slab);color:var(--slab-ink);border-radius:8px;padding:12px 14px;max-height:340px;overflow:auto;white-space:pre-wrap;word-break:break-word;margin:0}
+#log .err{color:#F08A6C}
+#log .cmdline{color:var(--slab-flag)}
+#log .step{color:var(--slab-val)}
+.files{list-style:none;padding:0;margin:12px 0 0;font-size:13px}
+.files li{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-top:1px solid var(--line)}
+.files code{font-family:var(--mono);font-size:12.5px}
+.files span{color:var(--ink3);font-size:12px;white-space:nowrap}
+.hide{display:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+footer{font-size:12.5px;color:var(--ink3);margin:18px 2px 0;max-width:66ch}
+footer code{font-family:var(--mono);font-size:12px;color:var(--ink2)}
+@media (max-width:520px){.wrap{padding:24px 14px}h1{font-size:22px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>EasyCATT command builder</h1>
+  <p class="lede">Click what you want for your output. The command assembles itself at the bottom of the page.</p>
+  <span class="mode" id="mode"><span class="dot"></span><span id="modetext">reading from disk &middot; copy only</span></span>
+</header>
+
+<section>
+  <p class="eyebrow">start here</p>
+  <h2>Recipes</h2>
+  <p class="note">Load a starter command and then edit one thing at a time.</p>
+  <div class="chips">
+    <button class="chip preset" type="button" data-preset="refresh">Download all source data</button>
+    <button class="chip preset" type="button" data-preset="ml">ML table for one gene</button>
+    <button class="chip preset" type="button" data-preset="llm">Text file for an LLM</button>
+    <button class="chip preset" type="button" data-preset="counts">Check value counts</button>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">--sources</p>
+  <h2>Sources</h2>
+  <p class="note">Click in join order.<span id="dotnote" class="hide"> An amber dot means that source hasn't been downloaded yet.</span></p>
+  <div class="chips" id="src"></div>
+  <details><summary>what this does</summary><p> This picks which datasets to pull from. Using all of them is slow. If you also ask for a joined CSV, the sources are stitched together with left joins following your order, matching on shared values like gene symbol, so the first source you click decides which rows survive.</p></details>
+</section>
+
+<section id="filters">
+  <p class="eyebrow">--gene &middot; --variant &middot; --columns</p>
+  <h2>Filters</h2>
+  <div class="grid">
+    <div>
+      <label class="lab" for="gene">Gene symbol(s)</label><input type="text" id="gene" placeholder="MYH7">
+      <details><summary>what this does</summary><p>This keeps only the genes you name in the data, comma-separated. Pair it with <code>--expand</code> or you will miss rows where your gene shares a cell with others.</p></details>
+    </div>
+    <div>
+      <label class="lab" for="variant">ClinVar Variation ID(s)</label><input type="text" id="variant" placeholder="8602">
+      <details><summary>what this does</summary><p>This keeps only rows for the Variation IDs you name &mdash; ClinVar's own numeric ID for a variant, such as 8602 or 5760. Comma-separate for more than 1.</p></details>
+    </div>
+    <div>
+      <label class="lab" for="columns">Columns to keep</label><input type="text" id="columns" placeholder="all columns">
+      <details><summary>what this does</summary><p>This limits the output to the columns you name, comma-separated. Leave it empty to keep all.</p></details>
+    </div>
+  </div>
+</section>
+
+<section id="shapesec">
+  <p class="eyebrow">encoding</p>
+  <h2>Shape of the output</h2>
+  <p class="note">All of these add new columns rather than replacing the originals, so you can turn on a buch at once.</p>
+  <div class="grid" id="shape"></div>
+</section>
+
+<section id="filesec">
+  <p class="eyebrow">--joined-output &middot; --template-output &middot; --na-value</p>
+  <h2>Files produced</h2>
+  <div class="grid">
+    <div>
+      <label class="lab" for="joined">Joined CSV</label><input type="text" id="joined" placeholder="output.csv">
+      <details><summary>what this does</summary><p>This merges your chosen sources into one CSV instead of writing a separate file per source.</p></details>
+    </div>
+    <div>
+      <label class="lab" for="tmplout">Combined text file</label><input type="text" id="tmplout" placeholder="variant_5760.txt">
+      <details><summary>what this does</summary><p>Gathers every generated English sentence into one text file which is the thing you would actually paste into a language model. Needs <code>--template</code> on, since otherwise no sentences exist to collect.</p></details>
+    </div>
+    <div>
+      <label class="lab" for="naval">Fill blanks with</label><input type="text" id="naval" placeholder="leave empty to skip">
+      <details><summary>what this does</summary><p>This replaces missing values everywhere with whatever you type. Useful because plenty of models and spreadsheet tools choke on empty cells.</p></details>
+    </div>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">--loglevel &middot; --force &middot; --counts</p>
+  <h2>Housekeeping</h2>
+  <div class="grid">
+    <div>
+      <label class="lab" for="log">Log level</label>
+      <select id="log">
+        <option value="info">info</option><option value="debug">debug</option>
+        <option value="warning">warning</option><option value="error">error</option>
+        <option value="critical">critical</option><option value="">none</option>
+      </select>
+      <details><summary>what this does</summary><p>How chatty the run is with you. Without it CATT works in silence and you will sit there in confusion wondering whether it froze or if it's just slow. Info is a good default, debug is for when something has clearly gone wrong.</p></details>
+    </div>
+    <div>
+      <label class="lab" for="mode-sel">Mode</label>
+      <select id="mode-sel"><option value="single">Single run</option><option value="txt">Batch text</option><option value="csv">Batch CSV</option></select>
+      <details><summary>what this does</summary><p>Single run does one pass over your filters. Batch mode loops over a list of Variation IDs, writing one file each, using the fixed source list the project's batch scripts use. Nothing else on this page applies in batch mode.</p></details>
+    </div>
+  </div>
+  <div class="grid" id="house" style="margin-top:14px"></div>
+</section>
+
+<section id="batchsec" class="hide">
+  <p class="eyebrow">batch</p>
+  <h2>Variant list</h2>
+  <p class="note">One Variation ID per line. Each one gets its own output file.</p>
+  <div class="grid">
+    <div><label class="lab" for="variants">Variation IDs</label><textarea id="variants" placeholder="310&#10;8046&#10;222816"></textarea></div>
+    <div>
+      <label class="lab" for="bfolder">Output folder</label><input type="text" id="bfolder" placeholder="results">
+      <p class="note" style="margin-top:8px">Created inside the CATT folder if it doesn't exist. This runs main.py once per variant, so a long list takes a long time.</p>
+    </div>
+  </div>
+</section>
+
+<div class="bar">
+  <div class="barhead">
+    <span id="barlabel">your command</span>
+    <div style="display:flex;gap:8px">
+      <button type="button" id="reset">Reset</button>
+      <button type="button" id="copy">Copy</button>
+      <button type="button" id="run" class="go hide">Run</button>
+      <button type="button" id="stop" class="hide">Stop</button>
+    </div>
+  </div>
+  <p id="cmd">python main.py</p>
+</div>
+
+<div id="warn" style="margin-top:12px"></div>
+
+<section id="logsec" class="hide">
+  <p class="eyebrow">output</p>
+  <h2 id="logtitle">Log</h2>
+  <p id="log">Ready.</p>
+  <div id="files"></div>
+</section>
+
+<footer id="foot">
+  Files you name yourself land in the CATT project folder; downloaded source data lands in <code>sources\&lt;source-name&gt;\</code>.
+</footer>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+
+var LIVE = location.protocol === "http:" || location.protocol === "https:";
+
+var FALLBACK_SOURCES = ["vrs","clinvar-variant-summary","clinvar-submission-summary",
+"gencc-submissions","clingen-gene-disease","clingen-dosage",
+"clingen-consensus-assertions-adult","clingen-consensus-assertions-pediatric",
+"clingen-overall-scores-adult","clingen-overall-scores-pediatric",
+"clingen-actionability-all-assertions-adult"];
+
+var SHAPE=[
+["map","Expert numbers","Uses each source's mapping.csv to turn text like \u2018Sufficient evidence for haploinsufficiency\u2019 into a meaningful number such as 0.99, where the size of the number carries real information. This is usually the one you want for machine learning."],
+["categories","Arbitrary numbers","Gives every distinct text value its own number: Pathogenic = 0, Benign = 1, and so on. Fine as labels for a model, but the numbers mean nothing by themselves \u2014 Benign is not one more than Pathogenic."],
+["onehot","Yes/no column per value","The standard machine learning encoding: a new column for every possible value, holding 1 if the row has it and 0 if not. Safe for algorithms, but it makes very wide files when a column has many distinct values."],
+["expand","One row per value","When a cell holds several values at once, such as MYH7,BRCA1, this writes an extra row for each. Turn it on whenever you filter by gene, otherwise rows where your gene is bundled with others are silently dropped."],
+["template","English sentence per row","Writes a plain-English summary of each row using the template in that source's config.yml and adds it as a new column. This is the piece that makes the output readable by a language model."],
+["days","Dates as days since 1970","Adds a days_\u2026 column converting each date to a plain number, which models handle better than date text. The documentation lists this as not yet implemented, so it may do nothing."],
+["age","Dates as days from today","Adds an age_\u2026 column with the number of days between today and the date. Also listed as not yet implemented, so treat any result with suspicion."]
+];
+
+var HOUSE=[
+["force","Re-download everything","Fetches fresh copies of every source even when the files already exist. ClinVar's files are enormous, so this takes a long time \u2014 but without it, files on disk are never refreshed, even after the database has published a newer release."],
+["counts","Print value frequencies","Skips your usual output and reports how often each value appears in each column. This is how you decide which values are worth adding to a mapping.csv."]
+];
+
+var picked=[], state={}, missing={}, srcHost=document.getElementById("src");
+var polling=null, cursor=0;
+
+function el(id){return document.getElementById(id);}
+function v(id){return (el(id).value||"").trim();}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+/* ---------- source chips ---------- */
+function makeChips(names){
+  srcHost.innerHTML="";
+  names.forEach(function(name){
+    var b=document.createElement("button");
+    b.type="button";b.className="chip";b.dataset.name=name;b.setAttribute("aria-pressed","false");
+    b.innerHTML='<span class="ord"></span><span class="nm"></span><span class="miss" title="not downloaded yet"></span>';
+    b.querySelector(".nm").textContent=name;
+    b.addEventListener("click",function(){
+      var i=picked.indexOf(name);
+      if(i>-1){picked.splice(i,1);}else{picked.push(name);}
+      paintChips();render();
+    });
+    srcHost.appendChild(b);
+  });
+  paintChips();
+}
+function paintChips(){
+  srcHost.querySelectorAll(".chip").forEach(function(c){
+    var i=picked.indexOf(c.dataset.name);
+    c.setAttribute("aria-pressed",i>-1?"true":"false");
+    c.querySelector(".ord").textContent=i>-1?(i+1):"";
+    c.dataset.missing=missing[c.dataset.name]?"1":"0";
+  });
+}
+makeChips(FALLBACK_SOURCES);
+
+/* ---------- option checkboxes ---------- */
+function buildOptions(list,host){
+  list.forEach(function(o){
+    var cell=document.createElement("div");
+    var id="f-"+o[0];
+    cell.innerHTML='<div class="opt"><input type="checkbox" id="'+id+'"><label for="'+id+'"><span class="flag">--'+o[0]+'</span><span class="gloss"></span></label></div><details><summary>what this does</summary><p></p></details>';
+    cell.querySelector(".gloss").textContent=o[1];
+    cell.querySelector("details p").textContent=o[2];
+    var box=cell.querySelector("input");
+    box.addEventListener("change",function(){state[o[0]]=box.checked;render();});
+    host.appendChild(cell);
+  });
+}
+buildOptions(SHAPE,el("shape"));
+buildOptions(HOUSE,el("house"));
+
+["gene","variant","columns","joined","tmplout","naval","log","mode-sel","variants","bfolder"]
+  .forEach(function(id){
+    var node=el(id);
+    node.addEventListener("input",render);
+    node.addEventListener("change",render);
+  });
+
+function setFlag(k,on){state[k]=on;var b=el("f-"+k);if(b)b.checked=on;}
+function setVal(id,val){el(id).value=val;}
+
+function clearAll(){
+  picked=[];state={};paintChips();
+  document.querySelectorAll('input[type=checkbox]').forEach(function(c){c.checked=false;});
+  ["gene","variant","columns","joined","tmplout","naval","variants","bfolder"].forEach(function(id){setVal(id,"");});
+  setVal("log","info");setVal("mode-sel","single");
+}
+
+var PRESETS={
+  refresh:function(){setFlag("force",true);},
+  ml:function(){["map","categories","expand","onehot"].forEach(function(k){setFlag(k,true);});
+    setVal("gene","MYH7");setVal("joined","output.csv");
+    picked=["vrs","clinvar-variant-summary","gencc-submissions","clingen-overall-scores-adult"];},
+  llm:function(){setFlag("expand",true);setFlag("template",true);
+    setVal("variant","5760");setVal("gene","KISS1R");
+    setVal("tmplout","variant_5760_gene_KISS1R.txt");
+    picked=FALLBACK_SOURCES.slice(0,10);},
+  counts:function(){setFlag("counts",true);picked=["clingen-dosage"];}
+};
+document.querySelectorAll("[data-preset]").forEach(function(b){
+  b.addEventListener("click",function(){clearAll();PRESETS[b.dataset.preset]();paintChips();render();});
+});
+
+/* ---------- command assembly ---------- */
+function spec(){
+  var s={mode:"single",loglevel:v("log"),sources:picked.slice()};
+  ["map","categories","onehot","expand","template","days","age","force","counts"]
+    .forEach(function(k){if(state[k])s[k]=true;});
+  if(v("naval"))s["na-value"]=v("naval");
+  if(v("gene"))s.gene=v("gene").replace(/\s/g,"");
+  if(v("variant"))s.variant=v("variant").replace(/\s/g,"");
+  if(v("columns"))s.columns=v("columns").replace(/\s*,\s*/g,",");
+  if(v("joined"))s["joined-output"]=v("joined");
+  if(v("tmplout"))s["template-output"]=v("tmplout");
+  var m=v("mode-sel");
+  if(m!=="single"){
+    s.mode="batch";s["batch-kind"]=m;
+    s.variants=el("variants").value;
+    s["batch-folder"]=v("bfolder")||"results";
+  }
+  return s;
+}
+
+function render(){
+  var m=v("mode-sel"), batch=(m!=="single");
+  el("batchsec").classList.toggle("hide",!batch);
+  ["filters","shapesec","filesec"].forEach(function(id){el(id).classList.toggle("hide",batch);});
+
+  var out=el("cmd"), warnHost=el("warn"), w=[];
+
+  if(batch){
+    var ids=el("variants").value.split(/[\s,]+/).filter(Boolean);
+    var folder=v("bfolder")||"results";
+    if(LIVE){
+      out.innerHTML='<span class="f">batch '+esc(m)+'</span> \u00b7 <span class="v">'+ids.length+
+        '</span> variant'+(ids.length===1?"":"s")+' \u2192 <span class="v">'+esc(folder)+'\\</span>';
+      out.dataset.plain="batch "+m+": "+ids.length+" variants into "+folder+"\\";
+    }else{
+      var script="batch_"+m+"_results.sh";
+      out.innerHTML='bash <span class="f">'+esc(script)+'</span> <span class="v">yourlist.txt</span> <span class="v">'+esc(folder)+'/</span>';
+      out.dataset.plain="bash "+script+" yourlist.txt "+folder+"/";
+      w.push("Those batch scripts are bash. On Windows they need WSL or Git Bash \u2014 or start this page through the runner, which loops over the variants itself.");
+    }
+    ids.forEach(function(id){ if(!/^\d+$/.test(id)){ w.push("\u2018"+id.slice(0,20)+"\u2019 is not a Variation ID. One number per line."); } });
+    if(!ids.length)w.push("No Variation IDs entered yet.");
+    if(ids.length>200)w.push(ids.length+" variants means "+ids.length+" separate runs. Expect this to take hours.");
+    paintWarn(warnHost,w);
+    return;
+  }
+
+  var html=["python main.py"], plain=["python main.py"];
+  function add(flag,val){
+    if(val===undefined){html.push('<span class="f">--'+flag+'</span>');plain.push("--"+flag);}
+    else{html.push('<span class="f">--'+flag+'</span>=<span class="v">"'+esc(val)+'"</span>');plain.push("--"+flag+'="'+val+'"');}
+  }
+  if(v("log")){html.push('<span class="f">--loglevel</span>=<span class="v">'+esc(v("log"))+'</span>');plain.push("--loglevel="+v("log"));}
+  ["force","counts","map","categories","onehot","expand","template","days","age"]
+    .forEach(function(k){if(state[k])add(k);});
+  if(v("naval"))add("na-value",v("naval"));
+  if(picked.length)add("sources",picked.join(","));
+  if(v("gene"))add("gene",v("gene").replace(/\s/g,""));
+  if(v("variant"))add("variant",v("variant").replace(/\s/g,""));
+  if(v("columns"))add("columns",v("columns").replace(/\s*,\s*/g,","));
+  if(v("joined"))add("joined-output",v("joined"));
+  if(v("tmplout"))add("template-output",v("tmplout"));
+  out.innerHTML=html.join(" ");
+  out.dataset.plain=plain.join(" ");
+
+  if(v("tmplout")&&!state.template)w.push("A combined text file needs --template turned on.");
+  if(v("joined")&&!picked.length)w.push("A joined CSV needs at least one source selected.");
+  if(v("joined")&&picked.length===1)w.push("Only one source picked, so there is nothing to join it to.");
+  if((v("gene")||v("variant"))&&!state.expand)w.push("Filtering without --expand can drop rows where your gene shares a cell with others.");
+  if(!picked.length&&!state.counts)w.push("No sources picked, so every configured source will run. That takes a while.");
+  if(state.counts&&(v("joined")||v("tmplout")))w.push("--counts prints frequencies instead of writing your output files.");
+  if(state.force)w.push("--force re-downloads every source. ClinVar's files are several gigabytes.");
+  var undownloaded=picked.filter(function(n){return missing[n];});
+  if(LIVE&&undownloaded.length&&!state.force){
+    w.push(undownloaded.length===1
+      ? "The source " + undownloaded[0] + " hasn't been downloaded yet. CATT will fetch it on this run."
+      : undownloaded.length + " selected sources haven't been downloaded yet. CATT will fetch them on this run.");
+  }
+  paintWarn(warnHost,w);
+}
+
+function paintWarn(host,list){
+  host.innerHTML=list.map(function(t){return '<p class="warn">'+esc(t)+'</p>';}).join("");
+}
+
+/* ---------- copy ---------- */
+el("copy").addEventListener("click",function(){
+  var node=el("cmd"), text=node.dataset.plain||node.textContent, b=this;
+  function done(){b.textContent="Copied";setTimeout(function(){b.textContent="Copy";},1600);}
+  function fallback(){
+    var a=document.createElement("textarea");a.value=text;a.style.position="fixed";a.style.opacity="0";
+    document.body.appendChild(a);a.select();try{document.execCommand("copy");}catch(e){}a.remove();done();
+  }
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done,fallback);}
+  else{fallback();}
+});
+el("reset").addEventListener("click",function(){clearAll();render();});
+
+/* ---------- live mode ---------- */
+function bytes(n){
+  if(n<1024)return n+" B";
+  if(n<1048576)return (n/1024).toFixed(0)+" KB";
+  return (n/1048576).toFixed(1)+" MB";
+}
+
+function paintLog(lines){
+  var box=el("log");
+  var atBottom=box.scrollTop+box.clientHeight>=box.scrollHeight-30;
+  lines.forEach(function(line){
+    var span=document.createElement("span");
+    if(/^\$ /.test(line))span.className="cmdline";
+    else if(/^--- /.test(line))span.className="step";
+    else if(/Traceback|Error|ERROR|Warning: |exit code/.test(line))span.className="err";
+    span.textContent=line+"\n";
+    box.appendChild(span);
+  });
+  if(atBottom)box.scrollTop=box.scrollHeight;
+}
+
+function paintFiles(list){
+  var host=el("files");
+  if(!list||!list.length){host.innerHTML="";return;}
+  var html='<ul class="files">';
+  list.forEach(function(f){
+    html+='<li><code>'+esc(f.name)+'</code><span>'+bytes(f.size)+'</span></li>';
+  });
+  html+='</ul><div style="margin-top:10px"><button type="button" id="reveal">Open the CATT folder</button></div>';
+  host.innerHTML=html;
+  el("reveal").addEventListener("click",function(){
+    fetch("/api/reveal",{method:"POST",body:"{}"});
+  });
+}
+
+function setRunning(on){
+  el("run").disabled=on;
+  el("stop").classList.toggle("hide",!on);
+  el("logtitle").textContent=on?"Running\u2026":"Log";
+}
+
+function poll(){
+  fetch("/api/log?since="+cursor).then(function(r){return r.json();}).then(function(d){
+    if(d.lines&&d.lines.length){paintLog(d.lines);cursor=d.next;}
+    if(!d.running){
+      clearInterval(polling);polling=null;setRunning(false);
+      paintFiles(d.outputs);
+    }
+  }).catch(function(){
+    clearInterval(polling);polling=null;setRunning(false);
+    paintLog(["Lost contact with the runner. Is the black console window still open?"]);
+  });
+}
+
+function loadSources(){
+  fetch("/api/sources").then(function(r){return r.json();}).then(function(d){
+    if(!d.sources||!d.sources.length)return;
+    missing={};
+    var names=d.sources.map(function(s){
+      if(!s.downloaded)missing[s.name]=true;
+      return s.name;
+    });
+    picked=picked.filter(function(n){return names.indexOf(n)>-1;});
+    makeChips(names);
+    el("dotnote").classList.remove("hide");
+    render();
+  }).catch(function(){});
+}
+
+if(LIVE){
+  el("mode").className="mode live";
+  el("modetext").textContent="connected to the runner \u00b7 can run commands";
+  el("run").classList.remove("hide");
+  el("logsec").classList.remove("hide");
+  el("barlabel").textContent="your command \u2014 runs in this folder";
+  el("foot").innerHTML='This page is served by <code>catt_ui.py</code> on your own computer. Nothing you type leaves the machine. Closing the black console window stops the runner.';
+  loadSources();
+
+  el("run").addEventListener("click",function(){
+    if(polling)return;
+    el("log").innerHTML="";cursor=0;setRunning(true);
+    fetch("/api/run",{method:"POST",headers:{"Content-Type":"application/json"},
+                      body:JSON.stringify(spec())})
+      .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});})
+      .then(function(res){
+        if(!res.ok){setRunning(false);paintLog([res.d.error||"Could not start."]);return;}
+        polling=setInterval(poll,700);poll();
+      })
+      .catch(function(){setRunning(false);paintLog(["Could not reach the runner."]);});
+  });
+
+  el("stop").addEventListener("click",function(){
+    fetch("/api/stop",{method:"POST",body:"{}"});
+  });
+}
+
+render();
+})();
+</script>
+</body>
+</html>
