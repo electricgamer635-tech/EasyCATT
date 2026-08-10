@@ -3,7 +3,7 @@ Installs CATT without the need for any technical knowledge and provides intuitiv
 
 # SETUP
 
-1. Unzip the CATT-Windows-Setup folder somewhere you can find again. Do not run from inside the zip file.
+1. Install and unzip the CATT-Windows-Setup folder somewhere you can find again. Do not run from inside the zip file.
 
 2. Double-click "Install CATT.bat"
 
